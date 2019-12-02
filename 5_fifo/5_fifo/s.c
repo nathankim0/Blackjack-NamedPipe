@@ -1,22 +1,7 @@
 #include "common.h"
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/ipc.h>
-#include <sys/shm.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <time.h>
-#include <sys/sem.h>
-#include <sys/stat.h> 
-#include <fcntl.h> 
-#include <signal.h>        /* For signal() */
-#define MAX_PLAYERS 4
+
 #define FROM_CLIENT_FILE "./from_client"
 #define TO_CLIENT_FILE "./to_client_"
-#define BUFF_SIZE 32
-#define MAX_CLIENT 5
 
 int clientCounter = 0;
 char msg[BUFF_SIZE];
@@ -31,10 +16,8 @@ int cmd;
 int n;
 int fd;
 int pid;
+int check2[2];
 
-
-
-void* play_game_one(void *data);
 int card_values[52];
 int card_suits[52];
 int ncard;
@@ -43,8 +26,11 @@ int players_hand_values[MAX_PLAYERS][20], dealers_hand_values[MAX_PLAYERS][20];
 int players_hand_suits[MAX_PLAYERS][20], dealers_hand_suits[MAX_PLAYERS][20];
 int nplayers[MAX_PLAYERS], ndealers[MAX_PLAYERS];
 
-int             gnShmID1;      /* Shared Memory Indicator */
-int             gnSemID1;      /* Semapore Indicator */
+int gnSemID1; /* Semapore Indicator */
+
+void init_cards();
+void* play_game_one(void* data);
+void* set_shutdown();
 
 union semun
 {
@@ -53,11 +39,109 @@ union semun
         unsigned short int *array;
 };
 
+int main(void)
+{
+	int id;
+	pthread_t threads[MAX_PLAYERS];
+	key_t keySem;       /* Semapore Key */
+	init_cards();
+	int count = 1;
+	keySem = (key_t)60101;
+	char buffer[BUFFER_SIZE];
+	union semun sem_union;
+	struct sembuf mysem_open = { 0, -1, SEM_UNDO }; // 세마포어 얻기
+	struct sembuf mysem_close = { 0, 1, SEM_UNDO };  // 세마포어 돌려주기
+
+	/* 공유 Semapore 세그먼트를 연다 - 필요하면 만든다. */
+	if ((gnSemID1 = semget(keySem, 1, IPC_CREAT | IPC_EXCL | 0666)) == -1)
+	{
+		//  printf("Semapore segment exist - opening as client\n");
+		  /* Segment probably already exists - try as a client */
+		if ((gnSemID1 = semget(keySem, 0, 0)) == -1)
+		{
+			perror("semget");
+			exit(1);
+		}
+	}
+	else
+	{
+		// printf("Creating new semapore segment\n");
+	}
+
+	/* Signal 등록 */
+	(void)signal(SIGINT, (void (*)()) set_shutdown);
+
+	/* Semapore 초기화 */
+	sem_union.val = 1;
+	semctl(gnSemID1, 0, SETVAL, sem_union);
+
+
+	//파이프 -생성 
+	mkfifo(FROM_CLIENT_FILE, 0666);
+
+	//파이프 -읽기전용으로 연다
+	if ((fd = open(FROM_CLIENT_FILE, O_RDWR)) == -1) {
+		printf("[SERVER] open!!!\n");
+		exit(1);
+	}
+
+	printf("SERVER start!\n\n");
+	while (1) {
+		memset(buff, 0, BUFF_SIZE);
+
+		//클라이언트 들어오면 받아옴
+		if (read(fd, buff, BUFF_SIZE) == -1) {
+			break;
+		}
+
+		//cmd==3, 각 클라이언트 별 pid sscanf
+		sscanf(buff, "%d %d|%s", &cmd, &pid, buff);
+
+		if (cmd == 3) {
+			printf("[SERVER] client(%d) enter....\n", pid);
+
+			//clientCounter는 들어올때마다 증가, max넘으면 출력
+			if (++clientCounter > MAX_CLIENT) {
+				printf("[SERVER] client count over!\n");
+				continue;
+			}
+
+			//클라이언트 개수 인덱스 배열에 pid 대입
+			clientName[clientCounter - 1] = pid;
+
+			//pid 추가한 파일경로로 파이프 생성
+			sprintf(filename, "%s%d", TO_CLIENT_FILE, pid);
+			mkfifo(filename, 0666);
+
+			sprintf(filename2, "%s%d", FROM_CLIENT_FILE, pid);
+			mkfifo(filename2, 0666);
+
+			//파이프 열기
+			client[clientCounter - 1] = open(filename, O_RDWR);
+
+			if (semop(gnSemID1, &mysem_open, 1) == -1)
+			{
+				perror("semop");
+				exit(1);
+			}
+
+			//쓰레드 생성, 게임 시작, clientCounter도 전달
+			pthread_create(&threads[count], NULL, play_game_one, (void*)(intptr_t)clientCounter);
+
+
+			printf("[SERVER] count: %d\n", count);
+			sprintf(buffer, "%d", count);
+
+			count += 1;
+			semop(gnSemID1, &mysem_close, 1);
+		}
+	}
+}
+
+
 void *set_shutdown ()
 {
         printf("[SIGNAL] : Got shutdown signal\n");
-        shmctl( gnShmID1, IPC_RMID, 0 );
-        printf("[SIGNAL] : Shared meory segment marked for deletion\n");;
         semctl( gnSemID1, IPC_RMID, 0 );
         printf("[SIGNAL] : Semapore segment marked for deletion\n");
         exit (1);
@@ -92,108 +176,12 @@ void init_cards()
 	ncard = 0;
 }
 
-main()
-{
-  int id;
-  pthread_t threads[MAX_PLAYERS];
-  ///* Shared Memory */
-  //key_t keyShm;       /* Shared Memory Key */
-  key_t keySem;       /* Semapore Key */
-  //_ST_SHM *pstShm1;      /* 공용 메모리 구조체 */
-  init_cards();
-  int count = 1;
-  //keyShm = (key_t)60100;
-  keySem = (key_t)60101;
-  char buffer[BUFFER_SIZE];
-  union semun sem_union;
-  struct sembuf mysem_open  = {0, -1, SEM_UNDO}; // 세마포어 얻기
-  struct sembuf mysem_close = {0, 1, SEM_UNDO};  // 세마포어 돌려주기
-
-
-  /* 공유 Semapore 세그먼트를 연다 - 필요하면 만든다. */
-  if( (gnSemID1 = semget( keySem, 1, IPC_CREAT | IPC_EXCL | 0666 )) == -1 )
-  {
-  //  printf("Semapore segment exist - opening as client\n");
-    /* Segment probably already exists - try as a client */
-    if( (gnSemID1 = semget( keySem, 0, 0 )) == -1 )
-    {
-      perror("semget");
-      exit(1);
-    }
-  }
-  else
-  {
-   // printf("Creating new semapore segment\n");
-  }
-
-  /* Signal 등록 */
-  (void) signal (SIGINT, (void (*)()) set_shutdown);
-
-  /* Semapore 초기화 */
-  sem_union.val = 1;
-  semctl(gnSemID1, 0, SETVAL, sem_union);
-
-
-
-  mkfifo(FROM_CLIENT_FILE, 0666);
-
-  if ((fd = open(FROM_CLIENT_FILE, O_RDWR)) == -1) {
-	  printf("[SERVER] open!!!\n");
-	  exit(1);
-  }
-
-  printf("SERVER start!\n\n");
-  while(1) {
-	  memset(buff, 0, BUFF_SIZE);
-
-	  if (read(fd, buff, BUFF_SIZE) == -1) {
-		  break;
-	  } 
-
-	  sscanf(buff, "%d %d|%s", &cmd, &pid, buff);
-
-	  if (cmd == 3) {
-		  printf("[SERVER] client(%d) enter....\n", pid);
-
-		  if (++clientCounter > MAX_CLIENT) {
-			  printf("[SERVER] client count over!\n");
-			  continue;
-		  }
-
-		  clientName[clientCounter - 1] = pid;
-		  sprintf(filename, "%s%d", TO_CLIENT_FILE, pid);
-		  mkfifo(filename, 0666);
-
-		  sprintf(filename2, "%s%d", FROM_CLIENT_FILE, pid);
-		  mkfifo(filename2, 0666);
-
-		  client[clientCounter - 1] = open(filename, O_RDWR);
-
-			 if (semop(gnSemID1, &mysem_open, 1) == -1)
-			  {
-				  perror("semop");
-				  exit(1);
-			  }
-
-			  pthread_create(&threads[count], NULL, play_game_one, (void*)clientCounter);
-
-
-			  printf("[SERVER] count: %d\n", count);
-			  sprintf(buffer, "%d", count);
-
-			  count += 1;
-			  semop(gnSemID1, &mysem_close, 1);
-	  }
-  }
-}
-int check2[2];
 void* play_game_one(void *data)
 {
-  int gnShmID2;      /* Shared Memory Indicator */
   int gnSemID2;      /* Semapore Indicator */
-  int id = (int)data;
-  int shmId = (int)data + 60100;
-  int semId = (int)data+1 +60100;
+  int id = (intptr_t)data;
+  int shmId = (intptr_t)data + 60100;
+  int semId = (intptr_t)data+1 +60100;
   char buffer[BUFFER_SIZE];
   int nwritten;
   int player_sum, dealer_sum;
@@ -201,17 +189,11 @@ void* play_game_one(void *data)
   int *player_hand_suits = players_hand_suits[id], *dealer_hand_suits = dealers_hand_suits[id];
   int i;
 
-  ///* Shared Memory */
-  //key_t keyShm;       /* Shared Memory Key */
-
   /* Semapore */
   key_t keySem;       /* Semapore Key */
   union semun sem_union;
   struct sembuf mysem_open  = {0, -1, SEM_UNDO}; // 세마포어 얻기
   struct sembuf mysem_close = {0, 1, SEM_UNDO};  // 세마포어 돌려주기
-
-  ///* Shared Memory의 키값을 생성한다. */
-  //keyShm = (key_t)shmId;
 
   /* Semapore 키값을 생성한다. */
   keySem = (key_t)semId;
@@ -272,6 +254,7 @@ void* play_game_one(void *data)
 		exit(1);
 	}
 
+  //client[id-1]로 카드 줌 )
 	write(client[id - 1], buffer, BUFFER_SIZE);
 
 	printf("[SERVER] send to player[%d]: first cardset\n",id);
@@ -286,15 +269,16 @@ void* play_game_one(void *data)
   printf("[SERVER] Dealer Hand with player[%d]: ",id);
   display_state(dealer_hand_values, dealer_hand_suits, ndealers[id]);
 
-
+  //HIT STAND 받을 파이프 open
   clientRead[id - 1] = open(filename2, O_RDWR);
 
   while (TRUE) {
-	  /* HIT, STAND 받기*/
 	  sleep(1);
+	  //HIT / STAND 받음
 	  read(clientRead[id - 1], buffer, BUFFER_SIZE);
 	  printf("[SERVER] I received from player[%d]: %s\n", id, buffer);
 
+	  //HIT일때
 	  if (strcmp(buffer, HIT) == 0)
 	  {
 		  pthread_mutex_lock(&card_mutex);
@@ -311,6 +295,7 @@ void* play_game_one(void *data)
 		  }
 		  pthread_mutex_unlock(&card_mutex);
 
+		  //새로운 카드 클라이언트로 보냄
 		  write(client[id - 1], buffer, BUFFER_SIZE);
 		  printf("[SERVER] I send to player[%d]: %s\n", id, buffer);
 
@@ -329,7 +314,7 @@ void* play_game_one(void *data)
 			  break;
 	  } //여기까지 HIT 처리
 
-	  /* 플레이어의 signal이 STAND인 경우 stop*/
+	  //STAND 일때 - break
 	  else if (strcmp(buffer, STAND) == 0) {
 		  check2[0] = 1;
 		  semop(gnSemID2, &mysem_close, 1);
@@ -358,13 +343,15 @@ void* play_game_one(void *data)
   {
           perror("semop");
           exit(1);
-  }		
+  }
+  //카드 보냄
   write(client[id - 1], buffer, BUFFER_SIZE);
 
 
   player_sum = calc_sum(player_hand_values, nplayers[id]);
   dealer_sum = calc_sum(dealer_hand_values, ndealers[id]);
 
+  //결과
   if (dealer_sum > 21)
     printf("\n[SERVER] Dealer busted! Player[%d] wins!\n", id);
   else if (player_sum == dealer_sum)
