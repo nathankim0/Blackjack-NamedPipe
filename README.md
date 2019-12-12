@@ -114,3 +114,7 @@ HIT일 경우 카드 한 장을 더 뽑아서 클라이언트에게 전송 (STAN
 	</tr>
     </table>
     
+
+실행 영상 (C language, gcc compiler, ubuntu 18.04)
+--
+https://youtu.be/c5W7WsLBivI
