@@ -49,35 +49,68 @@ HIT일 경우 카드 한 장을 더 뽑아서 클라이언트에게 전송 (STAN
 
 역할분담
 ------
-김진엽 : Pipe
-이진재 : Shared memory 
-박인효 : Message passing
+김진엽 : Pipe <br>
+이진재 : Shared memory  <br>
+박인효 : Message passing <br>
 
 
 작업내용
 --
-10/30 
-팀 결성
-11/12
-주제 선정 및 제안서 작성
-11/17
-블랙잭 구현 희의
-11/20
-블랙잭 구현 (간단한 순차적 프로그램, pipe 통신 1대1 구현)
-11/23
-블랙잭 구현 회의 및 코드 구현 완료, shared memory 구현 (단일 쓰레드, 1대1), message passing 및 pipe 구현 시작 (팀원 각자 프로그래밍)
-11/25
-1대n 다중 클라이언트 구현, shared memory 세마포어 구현, 다중 쓰레드 아이디어 회의
-11/26
-다중 쓰레드 아이디어 추가 회의, message passing / pipe 구현 중 세그멘테이션 오류 - 디버깅 완료
-11/28
-pipe 구현(단일 쓰레드, 1대1)
-11/29
-통화 회의, 다중 쓰레드 구현 시작, pipe, message passing 구현 중
-11/30
-shared memory 구현 완료 (다중 쓰레드 ,1대 n) pipe, message passing 1대 n 구현 시작
-12/01
-pipe 구현 완료 (다중 쓰레드, 1대 n)
-12/02
-message passing 구현 완료 (다중 쓰레드, 1대 n)
 
+ <table border="1">
+	<th>날짜</th>
+	<th>내용</th>
+	<tr>
+	    <td>10/30 </td>
+	    <td>팀 결성</td>
+	</tr>
+	<tr>
+	    <td>11/12</td>
+	    <td>주제 선정 및 제안서 작성</td>
+	</tr>
+  <tr>
+	    <td>11/17</td>
+	    <td>블랙잭 구현 희의</td>
+	</tr>
+  <tr>
+	    <td>11/20</td>
+	    <td>블랙잭 구현 (간단한 순차적 프로그램, pipe 통신 1대1 구현)</td>
+	</tr>
+  <tr>
+	    <td>11/23</td>
+	    <td>블랙잭 구현 회의 및 코드 구현 완료, shared memory 구현 (단일 쓰레드, 1대1), message passing 및 pipe 구현 시작 (팀원 각자 프로그래밍)</td>
+	</tr>
+  <tr>
+	    <td>11/25</td>
+	    <td>1대n 다중 클라이언트 구현, shared memory 세마포어 구현, 다중 쓰레드 아이디어 회의</td>
+	</tr>
+  <tr>
+	    <td>11/26</td>
+	    <td>다중 쓰레드 아이디어 추가 회의, message passing / pipe 구현 중 세그멘테이션 오류 - 디버깅 완료</td>
+	</tr>
+  <tr>
+	    <td>11/28</td>
+	    <td>pipe 구현(단일 쓰레드, 1대1)</td>
+	</tr>
+  <tr>
+	    <td>11/29</td>
+	    <td>통화 회의, 다중 쓰레드 구현 시작, pipe, message passing 구현 중</td>
+	</tr>
+  <tr>
+	    <td>11/30</td>
+	    <td>shared memory 구현 완료 (다중 쓰레드 ,1대 n) pipe, message passing 1대 n 구현 시작</td>
+	</tr>
+  <tr>
+	    <td>12/01</td>
+	    <td>pipe 구현 완료 (다중 쓰레드, 1대 n)</td>
+	</tr>
+  <tr>
+	    <td>12/02</td>
+	    <td>message passing 구현 완료 (다중 쓰레드, 1대 n), 발표 자료 및 보고서 작성 완료</td>
+	</tr>
+  <tr>
+	    <td>12/04</td>
+	    <td>발표 (김진엽)</td>
+	</tr>
+    </table>
+    
