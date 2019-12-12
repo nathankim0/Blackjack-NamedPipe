@@ -13,5 +13,5 @@
 소프트웨어 설계
 ---------------
 <div>
-![noname01](https://user-images.githubusercontent.com/37360089/70676912-03758f00-1cd1-11ea-958d-05a9ceca7596.png)
+<img src="https://user-images.githubusercontent.com/37360089/70676912-03758f00-1cd1-11ea-958d-05a9ceca7596.png"></img>
 </div>
