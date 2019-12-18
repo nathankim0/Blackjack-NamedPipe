@@ -119,5 +119,6 @@ HIT일 경우 카드 한 장을 더 뽑아서 클라이언트에게 전송 (STAN
 --
 <div>
 <img src="https://user-images.githubusercontent.com/37360089/71075915-35eb2480-21c8-11ea-9f95-273da3e3849a.gif"></img>
-https://youtu.be/c5W7WsLBivI
 </div>
+https://youtu.be/c5W7WsLBivI
+
